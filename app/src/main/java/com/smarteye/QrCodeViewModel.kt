@@ -17,9 +17,8 @@
 package com.smarteye
 
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
-import android.content.IntentSender
-import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
@@ -41,35 +40,60 @@ class QrCodeViewModel(barcode: Barcode) {
     var qrContent: String = ""
     var qrCodeTouchCallback = { v: View, e: MotionEvent -> false} //no-op
 
+    private fun invokeAlipay(context: Context) {
+        val uri:Uri = Uri.parse("alipayqr://platformapi/startapp?saId=10000007")
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        context.startActivity(intent)
+    }
+
+    private fun invokeWechatPay(context: Context) {
+        val pkgName = "com.tencent.mm"
+        val intent  = Intent()
+        intent.component = ComponentName(pkgName, "com.tencent.mm.ui.LauncherUI")
+        intent.putExtra("LauncherUI.From.Scaner.Shortcut", true)
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+        intent.action = "android.intent.action.VIEW"
+        context.startActivity(intent)
+    }
     init {
+
+        println("type=" + barcode.valueType.toString())
         when (barcode.valueType) {
             Barcode.TYPE_URL -> {
                 qrContent = barcode.url!!.url!!
                 qrCodeTouchCallback = { v: View, e: MotionEvent ->
-                    if (e.action == MotionEvent.ACTION_DOWN && boundingRect.contains(e.getX().toInt(), e.getY().toInt())) {
-                        val openBrowserIntent = Intent(Intent.ACTION_VIEW)
-                        openBrowserIntent.data = Uri.parse(qrContent)
-                        v.context.startActivity(openBrowserIntent)
-
-                        // val alipayPkgName: String = "com.eg.android.AlipayGphone"
-                        /*
-                        val intent: Intent = Intent(Intent.ACTION_VIEW)
-                        intent.addCategory(Intent.CATEGORY_LAUNCHER)
-                        val cn: ComponentName = ComponentName(alipayPkgName, "com.alipay.mobile.quinox.splash.Share")
-                        intent.component = cn
-                        v.context.startActivity(intent)
-                        */
-
-                        /*geManager:PackageManager  = v.context.packageManager;
-                        val intent: IntentSender = packageManager.getLaunchIntentSenderForPackage(alipayPkgName);
-                        if (intent != null){
-                            println("Send to $alipayPkgName")
-                            intent.sendIntent(v.context, 8, null, null, null)
-                        }else{
-                            println("Can't find $alipayPkgName")
-                        }*/
+                    if (e.action == MotionEvent.ACTION_DOWN && boundingRect.contains(
+                            e.getX().toInt(), e.getY().toInt()
+                        )
+                    ) {
+                        println(qrContent)
+                        if (qrContent.contains("https://qr.alipay.com/")) {
+                            invokeAlipay(v.context)
+                        } else {
+                            val openBrowserIntent = Intent(Intent.ACTION_VIEW)
+                            openBrowserIntent.data = Uri.parse(qrContent)
+                            v.context.startActivity(openBrowserIntent)
+                        }
                     }
                     true // return true from the callback to signify the event was handled
+                }
+            }
+
+            Barcode.TYPE_TEXT -> {
+                qrContent = barcode.rawValue.toString()
+                qrCodeTouchCallback = { v: View, e: MotionEvent ->
+                    if (e.action == MotionEvent.ACTION_DOWN && boundingRect.contains(
+                            e.getX().toInt(), e.getY().toInt()
+                        )
+                    ) {
+                        println(qrContent)
+                        if (qrContent.contains("wxp://")) {
+                            invokeWechatPay(v.context)
+                        } else {
+                            qrContent = "Unsupported data type: ${qrContent}"
+                        }
+                    }
+                    true
                 }
             }
             // Add other QR Code types here to handle other types of data,
