@@ -1,12 +1,12 @@
 package com.smarteye.ui.pay
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController
@@ -14,7 +14,6 @@ import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -47,16 +46,8 @@ class PayFragment : Fragment() {
             container: ViewGroup?,
             savedInstanceState: Bundle?
     ): View {
-        val payViewModel =
-                ViewModelProvider(this).get(PayViewModel::class.java)
-
         _binding = FragmentPayBinding.inflate(inflater, container, false)
         val root: View = binding.root
-
-        val textView: TextView = binding.textPay
-        payViewModel.text.observe(viewLifecycleOwner) {
-            textView.text = it
-        }
 
         // Request camera permissions was done in activity
         startCamera()
@@ -75,9 +66,10 @@ class PayFragment : Fragment() {
         _binding = null
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun startCamera() {
-        var cameraController = LifecycleCameraController(attachedContext.applicationContext)
+        val cameraController = LifecycleCameraController(attachedContext.applicationContext)
         val previewView: PreviewView = binding.previewPay
 
         val options = BarcodeScannerOptions.Builder()
