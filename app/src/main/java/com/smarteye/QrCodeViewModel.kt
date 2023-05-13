@@ -81,7 +81,7 @@ class QrCodeViewModel(barcode: Barcode) {
 
             Barcode.TYPE_TEXT -> {
                 qrContent = barcode.rawValue.toString()
-                qrCodeTouchCallback = { v: View, e: MotionEvent ->
+                qrCodeTouchCallback = { v: View, e: MotionEvent -> Boolean
                     if (e.action == MotionEvent.ACTION_DOWN && boundingRect.contains(
                             e.getX().toInt(), e.getY().toInt()
                         )
