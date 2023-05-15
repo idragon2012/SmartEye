@@ -1,5 +1,4 @@
 package com.smarteye.ui.identify
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
@@ -11,6 +10,7 @@ import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -34,7 +34,7 @@ import org.tensorflow.lite.support.image.ops.Rot90Op
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.min
-import kotlin.random.Random
+import kotlin.math.max
 
 class IdentifyFragment : Fragment() {
 
@@ -45,6 +45,7 @@ class IdentifyFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var bitmapBuffer: Bitmap
+    private var latest_location = RectF(0f, 0f, 3f, 3f)
 
     private val executor = Executors.newSingleThreadExecutor()
 
@@ -86,10 +87,30 @@ class IdentifyFragment : Fragment() {
                     postRotate(imageRotationDegrees.toFloat())
                     if (isFrontFacing) postScale(-1f, 1f)
                 }
-                val uprightImage = Bitmap.createBitmap(
-                    bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
-                _binding!!.imagePredicted.setImageBitmap(uprightImage)
+
+                //println("buffer.width: ${bitmapBuffer.width}, buffer.height: ${bitmapBuffer.height}")
+                val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
+                //println("rotatedBitmap.width: ${rotatedBitmap.width}, rotatedBitmap.height: ${rotatedBitmap.height}")
+
+               // println(latest_location)
+                val location = RectF(max(0f, latest_location.left)*rotatedBitmap.width,
+                    max(0f, latest_location.top) * rotatedBitmap.height,
+                    max(0f, latest_location.right) * rotatedBitmap.width,
+                    max(0f, latest_location.bottom) * rotatedBitmap.height)
+                //println(location)
+                //println("x: ${location.left}, y: ${location.top}, width: ${location.right-location.left}, height: ${location.bottom-location.top}")
+                val x = location.left.toInt()
+                val y = location.top.toInt()
+                val width = min(bitmapBuffer.width-location.left.toInt(), location.right.toInt()-location.left.toInt())
+                val height = min(bitmapBuffer.height-location.top.toInt(), location.bottom.toInt()-location.top.toInt())
+                //println("x: $x, y: $y, width: $width, height: $height")
+                val croppedImage = Bitmap.createBitmap(rotatedBitmap, x, y, min(rotatedBitmap.width-x, width), min(rotatedBitmap.height-y, height))
+                //println("croppedImage.width: ${croppedImage.width}, croppedImage.height: ${croppedImage.height}")
+                _binding!!.imagePredicted.scaleType = ImageView.ScaleType.FIT_CENTER
+                _binding!!.imagePredicted.setImageBitmap(croppedImage)
                 _binding!!.imagePredicted.visibility = View.VISIBLE
+                binding.boxPrediction.visibility = View.GONE
+                //binding.textPrediction.visibility = View.GONE
             }
 
             // Re-enable camera controls
@@ -183,6 +204,10 @@ class IdentifyFragment : Fragment() {
                     imageRotationDegrees = image.imageInfo.rotationDegrees
                     bitmapBuffer = Bitmap.createBitmap(
                         image.width, image.height, Bitmap.Config.ARGB_8888)
+                    println("image.width: ${image.width}, image.height: ${image.height}")
+                    println("bitmapBuffer.width: ${bitmapBuffer.width}, bitmapBuffer.height: ${bitmapBuffer.height}")
+                    println("identifyPreview.width: ${binding.identifyPreview.width}, identifyPreview.height: ${binding.identifyPreview.height}")
+                    println("identifyPredicted.width: ${binding.imagePredicted.width}, identifyPredicted.height: ${binding.imagePredicted.height}")
                 }
 
                 // Early exit: image analysis is in paused state
@@ -255,6 +280,8 @@ class IdentifyFragment : Fragment() {
             height = min(binding.identifyPreview.height, location.bottom.toInt() - location.top.toInt())
         }
 
+        latest_location = prediction.location
+
         // Make sure all UI elements are visible
         binding.boxPrediction.visibility = View.VISIBLE
         binding.textPrediction.visibility = View.VISIBLE
@@ -273,7 +300,7 @@ class IdentifyFragment : Fragment() {
             location.right * binding.identifyPreview.width,
             location.bottom * binding.identifyPreview.height
         )
-
+        //println("previewLocation: $previewLocation")
         // Step 2: compensate for camera sensor orientation and mirroring
         val isFrontFacing = lensFacing == CameraSelector.LENS_FACING_FRONT
         val correctedLocation = if (isFrontFacing) {
@@ -285,7 +312,7 @@ class IdentifyFragment : Fragment() {
         } else {
             previewLocation
         }
-
+        //println("previewLocation: $previewLocation")
         // Step 3: compensate for 1:1 to 4:3 aspect ratio conversion + small margin
         val margin = 0.1f
         val requestedRatio = 4f / 3f
