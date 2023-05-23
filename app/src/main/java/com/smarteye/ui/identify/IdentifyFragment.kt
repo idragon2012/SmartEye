@@ -1,16 +1,23 @@
 package com.smarteye.ui.identify
+
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.graphics.RectF
+import android.os.Build
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -19,8 +26,13 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
+import com.smarteye.R
 import com.smarteye.databinding.FragmentIdentifyBinding
+import com.smarteye.invoke.ChatGPTUtil
+import com.smarteye.invoke.ImageDetectUtil
+import com.smarteye.invoke.InfoUtil
 import com.smarteye.tflite.ObjectDetectionHelper
+import org.json.JSONArray
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.nnapi.NnApiDelegate
@@ -33,6 +45,7 @@ import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp
 import org.tensorflow.lite.support.image.ops.Rot90Op
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlin.math.min
 import kotlin.math.max
 
@@ -62,16 +75,18 @@ class IdentifyFragment : Fragment() {
         super.onAttach(context)
         attachedContext = context
     }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreateView(
-            inflater: LayoutInflater,
-            container: ViewGroup?,
-            savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentIdentifyBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
         _binding!!.cameraCaptureButton.setOnClickListener {
-
+/*
             // Disable all camera controls
             it.isEnabled = false
 
@@ -114,7 +129,39 @@ class IdentifyFragment : Fragment() {
             }
 
             // Re-enable camera controls
-            it.isEnabled = true
+            it.isEnabled = true*/
+
+            val matrix = Matrix().apply {
+                postRotate(imageRotationDegrees.toFloat())
+                if (isFrontFacing) postScale(-1f, 1f)
+            }
+            val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
+
+            thread {
+                val message = ImageDetectUtil.advancedGeneral(rotatedBitmap);//调用百度接口进行图像识别
+
+                Looper.prepare();
+
+                val alertDialog = AlertDialog.Builder(context).apply {
+                    setTitle("识别结果")
+                    setMessage(InfoUtil.transInfo(message))//组合将要展示的信息，并查询 ChatGPT
+                    setPositiveButton("确定", null) // 添加确定按钮，并设置点击事件监听器
+                }.create()
+
+                alertDialog.setOnShowListener {
+                    val window = alertDialog.window
+                    window?.let {
+                        val layoutParams = WindowManager.LayoutParams().apply {
+                            copyFrom(it.attributes)
+                            alpha = 0.6f // 设置透明度，0-1 之间的浮点数
+                        }
+                        it.attributes = layoutParams
+                    }
+                }
+
+                alertDialog.show() // 显示弹出框
+                Looper.loop();
+            }
         }
 
         return root
@@ -141,7 +188,7 @@ class IdentifyFragment : Fragment() {
             .add(ResizeWithCropOrPadOp(cropSize, cropSize))
             .add(
                 ResizeOp(
-                tfInputSize.height, tfInputSize.width, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR)
+                    tfInputSize.height, tfInputSize.width, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR)
             )
             .add(Rot90Op(-imageRotationDegrees / 90))
             .add(NormalizeOp(0f, 1f))
@@ -219,25 +266,25 @@ class IdentifyFragment : Fragment() {
                 // Copy out RGB bits to our shared buffer
                 image.use { bitmapBuffer.copyPixelsFromBuffer(image.planes[0].buffer)  }
 
-                // Process the image in Tensorflow
-                val tfImage =  tfImageProcessor.process(tfImageBuffer.apply { load(bitmapBuffer) })
+                /*                // Process the image in Tensorflow
+                                val tfImage =  tfImageProcessor.process(tfImageBuffer.apply { load(bitmapBuffer) })
 
-                // Perform the object detection for the current frame
-                val predictions = detector.predict(tfImage)
+                                // Perform the object detection for the current frame
+                                val predictions = detector.predict(tfImage)
 
-                // Report only the top prediction
-                reportPrediction(predictions.maxByOrNull { it.score })
+                                // Report only the top prediction
+                                reportPrediction(predictions.maxByOrNull { it.score })
 
-                // Compute the FPS of the entire pipeline
-                val frameCount = 10
-                if ((++frameCounter % frameCount) == 0) {
-                    frameCounter = 0
-                    val now = System.currentTimeMillis()
-                    val delta = now - lastFpsTimestamp
-                    val fps = 1000 * frameCount.toFloat() / delta
-                    Log.d(TAG, "FPS: ${"%.02f".format(fps)} with tensorSize: ${tfImage.width} x ${tfImage.height}")
-                    lastFpsTimestamp = now
-                }
+                                // Compute the FPS of the entire pipeline
+                                val frameCount = 10
+                                if ((++frameCounter % frameCount) == 0) {
+                                    frameCounter = 0
+                                    val now = System.currentTimeMillis()
+                                    val delta = now - lastFpsTimestamp
+                                    val fps = 1000 * frameCount.toFloat() / delta
+                                    Log.d(TAG, "FPS: ${"%.02f".format(fps)} with tensorSize: ${tfImage.width} x ${tfImage.height}")
+                                    lastFpsTimestamp = now
+                                }*/
             })
 
             // Create a new camera selector each time, enforcing lens facing
