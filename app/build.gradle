@@ -62,5 +62,7 @@ dependencies {
     implementation 'org.tensorflow:tensorflow-lite-gpu:2.9.0'
     implementation 'org.tensorflow:tensorflow-lite-support:0.4.2'
 
+    implementation 'com.squareup.okhttp3:okhttp:3.10.0'
+
     implementation 'com.google.mlkit:barcode-scanning:17.0.2'
 }
