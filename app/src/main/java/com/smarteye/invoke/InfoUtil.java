@@ -13,8 +13,19 @@ public class InfoUtil {
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     public static String transInfo(String baiduInfo) throws JSONException {
         JSONObject all = new JSONObject(baiduInfo);
-        JSONArray result = all.getJSONArray("result");
         StringBuilder sb = new StringBuilder();
+        if (all.has("error_code")) {
+            sb.append("百度AI接口调用失败:").append(all.getString("error_msg"));
+            return sb.toString();
+        }
+
+        if (!all.has("result")) {
+            sb.append("百度AI接口调用失败:无result");
+            return sb.toString();
+        }
+
+        JSONArray result = all.getJSONArray("result");
+
         for (int i = 0; i < result.length(); i++) {
             JSONObject detail = result.getJSONObject(i);
             if (detail.getDouble("score") > 0.5) {
@@ -27,8 +38,7 @@ public class InfoUtil {
                 sb.append(detail.getString("keyword"))
                         .append(":")
                         .append(detail.getString("score"))
-                        .append("\n")
-                        .append("ChatGPT：" + ChatGPTUtil.chat(detail.getString("keyword")))
+                        .append("\n").append("ChatGPT：").append(ChatGPTUtil.chat(detail.getString("keyword")))
                         .append("\n")
                         .append(baikeInfo == null ? "" : "百科信息：" + baikeInfo.optString("description"))
                         .append("\n")

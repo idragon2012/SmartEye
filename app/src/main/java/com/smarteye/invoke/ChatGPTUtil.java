@@ -27,15 +27,18 @@ public class ChatGPTUtil {
             request.put("messages", messages);
 
             String result = OkHttpClientUtil.doPostJsonWithAuth(url, request.toString(), authorization);
-
             System.out.println(result);
             JSONObject jsonObject = new JSONObject(result);
+            // handle the error of doPostJsonWithAuth
+            if (jsonObject.has("error")) {
+                return jsonObject.getJSONObject("error").getString("message");
+            }
             JSONArray choices = jsonObject.getJSONArray("choices");
             JSONObject choice =choices.getJSONObject(0);
             return choice.getJSONObject("message").getString("content");
         } catch (Exception e) {
             e.printStackTrace();
+            return e.getMessage();
         }
-        return null;
     }
 }

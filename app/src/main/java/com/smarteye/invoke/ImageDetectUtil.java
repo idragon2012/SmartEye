@@ -13,7 +13,7 @@ import java.net.URLEncoder;
  */
 public class ImageDetectUtil {
 
-    public static final String accessToken = "";
+    public static final String accessToken = ""; // Baidu AI access token
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     public static String advancedGeneral(Bitmap bitmap) {
@@ -26,13 +26,12 @@ public class ImageDetectUtil {
 
             String param = "image=" + imgParam+"&baike_num=9999";
             String result = OkHttpClientUtil.doPostXXX(url + accessToken, param);
-
             System.out.println(result);
             return result;
         } catch (Exception e) {
             e.printStackTrace();
+            return e.getMessage();
         }
-        return null;
     }
 }
 
