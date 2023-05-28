@@ -67,8 +67,10 @@ class QrCodeViewModel(barcode: Barcode) {
                         )
                     ) {
                         println(qrContent)
-                        if (qrContent.contains("https://qr.alipay.com/")) {
+                        if (qrContent.startsWith("https://qr.alipay.com/") or qrContent.startsWith("http://c3x.me/") or qrContent.startsWith("https://qr.shouqianba.com/")) {
                             invokeAlipay(v.context)
+                        } else if (qrContent.startsWith("http://www.mobike.com")){
+                            invokeWechatPay(v.context)
                         } else {
                             val openBrowserIntent = Intent(Intent.ACTION_VIEW)
                             openBrowserIntent.data = Uri.parse(qrContent)
@@ -87,7 +89,7 @@ class QrCodeViewModel(barcode: Barcode) {
                         )
                     ) {
                         println(qrContent)
-                        if (qrContent.contains("wxp://")) {
+                        if (qrContent.startsWith("wxp://")) {
                             invokeWechatPay(v.context)
                         } else {
                             qrContent = "Unsupported data type: ${qrContent}"
