@@ -15,8 +15,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.ImageView
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
@@ -26,13 +24,10 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
-import com.smarteye.R
 import com.smarteye.databinding.FragmentIdentifyBinding
-import com.smarteye.invoke.ChatGPTUtil
 import com.smarteye.invoke.ImageDetectUtil
 import com.smarteye.invoke.InfoUtil
 import com.smarteye.tflite.ObjectDetectionHelper
-import org.json.JSONArray
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.nnapi.NnApiDelegate
@@ -47,7 +42,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.math.min
-import kotlin.math.max
 
 class IdentifyFragment : Fragment() {
 
@@ -86,7 +80,6 @@ class IdentifyFragment : Fragment() {
         val root: View = binding.root
 
         _binding!!.cameraCaptureButton.setOnClickListener {
-/*
             // Disable all camera controls
             it.isEnabled = false
 
@@ -96,6 +89,7 @@ class IdentifyFragment : Fragment() {
                 _binding!!.imagePredicted.visibility = View.GONE
 
             } else {
+                /*
                 // Otherwise, pause image analysis and freeze image
                 pauseAnalysis = true
                 val matrix = Matrix().apply {
@@ -126,42 +120,55 @@ class IdentifyFragment : Fragment() {
                 _binding!!.imagePredicted.visibility = View.VISIBLE
                 binding.boxPrediction.visibility = View.GONE
                 //binding.textPrediction.visibility = View.GONE
-            }
+                */
 
-            // Re-enable camera controls
-            it.isEnabled = true*/
+                binding.cameraCaptureButton.isClickable = false
 
-            val matrix = Matrix().apply {
-                postRotate(imageRotationDegrees.toFloat())
-                if (isFrontFacing) postScale(-1f, 1f)
-            }
-            val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
-
-            thread {
-                val message = ImageDetectUtil.advancedGeneral(rotatedBitmap);//调用百度接口进行图像识别
-
-                Looper.prepare();
-
-                val alertDialog = AlertDialog.Builder(context).apply {
-                    setTitle("识别结果")
-                    setMessage(InfoUtil.transInfo(message))//组合将要展示的信息，并查询 ChatGPT
-                    setPositiveButton("确定", null) // 添加确定按钮，并设置点击事件监听器
-                }.create()
-
-                alertDialog.setOnShowListener {
-                    val window = alertDialog.window
-                    window?.let {
-                        val layoutParams = WindowManager.LayoutParams().apply {
-                            copyFrom(it.attributes)
-                            alpha = 0.6f // 设置透明度，0-1 之间的浮点数
-                        }
-                        it.attributes = layoutParams
-                    }
+                val matrix = Matrix().apply {
+                    postRotate(imageRotationDegrees.toFloat())
+                    if (isFrontFacing) postScale(-1f, 1f)
                 }
+                val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
 
-                alertDialog.show() // 显示弹出框
-                Looper.loop();
+                thread {
+                    // Initialize fake json message in case of empty access token for Baike
+                    var message =
+                        "{\"result_num\":5,\"result\":[{\"keyword\":\"笔记本电脑\",\"score\":0.926193,\"root\":\"商品-电脑办公\",\"baike_info\":{\"baike_url\":\"http://baike.baidu.com/item/%E7%AC%94%E8%AE%B0%E6%9C%AC%E7%94%B5%E8%84%91/213561\",\"image_url\":\"https://bkimg.cdn.bcebos.com/pic/bd3eb13533fa828ba61ed232e04b5634970a314eec9c\",\"description\":\"笔记本电脑(Laptop)，简称笔记本，又称“便携式电脑，手提电脑、掌上电脑或膝上型电脑”，特点是机身小巧。比台式机携带方便，是一种小型、便于携带的个人电脑。通常重1-3千克。当前发展趋势是体积越来越小，重量越来越轻，功能越来越强。为了缩小体积，笔记本电脑采用液晶显示器(液晶LCD屏)。除键盘外，还装有触摸板(Touchpad)或触控点(Pointing stick)作为定位设备(Pointing device)。笔记本电脑和台式机的区别在于便携性，它对主板、中央处理器、内存、显卡、电脑硬盘的容量等有不同要求。当今的笔记本电脑正在根据用途分化出不同的趋势，上网本趋于日常办公以及电影；商务本趋于稳定低功耗获得更长久的续航时间；家用本拥有不错的性能和很高的性价比，游戏本则是专门为了迎合少数人群外出游戏使用的；发烧级配置，娱乐体验效果好，当然价格不低，电池续航时间也不理想。全球市场上有很多品牌的笔记本电脑。依次为(不按顺序排列)：苹果(Apple)、联想(Lenovo)、惠普(HP)、华硕、宏碁(Acer)等。注：笔记本电脑的品牌分三线，一线、准一线、二线和三线。\"}},{\"keyword\":\"笔记本\",\"score\":0.617072,\"root\":\"商品-电脑办公\",\"baike_info\":{}},{\"keyword\":\"室内一角\",\"score\":0.380852,\"root\":\"建筑-室内\",\"baike_info\":{}},{\"keyword\":\"台式电脑\",\"score\":0.19285,\"root\":\"商品-数码产品\",\"baike_info\":{\"baike_url\":\"http://baike.baidu.com/item/%E5%8F%B0%E5%BC%8F%E7%94%B5%E8%84%91/1958355\",\"image_url\":\"https://bkimg.cdn.bcebos.com/pic/9825bc315c6034a8c0b07935c113495409237630\",\"description\":\"台式机，是一种独立相分离的计算机，完完全全跟其它部件无联系，相对于笔记本和上网本体积较大，主机、显示器等设备一般都是相对独立的，一般需要放置在电脑桌或者专门的工作台上。因此命名为台式机。台式电脑的优点就是耐用，以及价格实惠，和笔记本相比，相同价格前提下配置较好，散热性较好，配件若损坏更换价格相对便宜，缺点就是：笨重，耗电量大。电脑(Computer)是一种利用电子学原理根据一系列指令来对数据进行处理的机器。电脑可以分为两部分：软件系统,硬件系统。第一台电脑ENIAC于1946年2月14日宣告诞生。\"}},{\"keyword\":\"电脑\",\"score\":0.003849,\"root\":\"商品-电脑办公\",\"baike_info\":{}}],\"log_id\":1662722855597027057}"
+                    var prefix = "ImageDetectUtil.accessToken is empty. Following message from Baike is fake:\n"
+                    if (ImageDetectUtil.accessToken.isNotEmpty()) {
+                        message = ImageDetectUtil.advancedGeneral(rotatedBitmap) //调用百度接口进行图像识别
+                        prefix = ""
+                    }
+
+                    val objectMessage = prefix +
+                        InfoUtil.transInfo(message) // Call chat-gpt3 to generate a sentence based on the image recognition result
+
+                    Looper.prepare()
+
+                    val alertDialog = AlertDialog.Builder(context).apply {
+                        setTitle("识别结果")
+                        setMessage(objectMessage)//组合将要展示的信息
+                        setPositiveButton("确定", { dialog, which ->
+                            binding.cameraCaptureButton.isClickable = true
+                        }) // 添加确定按钮，并设置点击事件监听器
+                    }.create()
+
+                    alertDialog.setOnShowListener {
+                        val window = alertDialog.window
+                        window?.let {
+                            val layoutParams = WindowManager.LayoutParams().apply {
+                                copyFrom(it.attributes)
+                                alpha = 0.6f // 设置透明度，0-1 之间的浮点数
+                            }
+                            it.attributes = layoutParams
+                        }
+                    }
+                    alertDialog.show() // 显示弹出框
+                    Looper.loop()
+                }
             }
+            // Re-enable camera controls
+            it.isEnabled = true
         }
 
         return root
@@ -265,8 +272,7 @@ class IdentifyFragment : Fragment() {
 
                 // Copy out RGB bits to our shared buffer
                 image.use { bitmapBuffer.copyPixelsFromBuffer(image.planes[0].buffer)  }
-
-                /*                // Process the image in Tensorflow
+                               // Process the image in Tensorflow
                                 val tfImage =  tfImageProcessor.process(tfImageBuffer.apply { load(bitmapBuffer) })
 
                                 // Perform the object detection for the current frame
@@ -284,7 +290,7 @@ class IdentifyFragment : Fragment() {
                                     val fps = 1000 * frameCount.toFloat() / delta
                                     Log.d(TAG, "FPS: ${"%.02f".format(fps)} with tensorSize: ${tfImage.width} x ${tfImage.height}")
                                     lastFpsTimestamp = now
-                                }*/
+                                }
             })
 
             // Create a new camera selector each time, enforcing lens facing
